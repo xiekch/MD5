@@ -7,9 +7,8 @@
 #include <string>
 using namespace std;
 
-typedef unsigned int uint32;
-#define BLOCKBYTES 512 / 8
-#define MD5BYTES 128 / 8
+#define BLOCKBYTES 64
+#define MD5BYTES 16
 #define F(B, C, D) (((B) & (C)) | ((~B) & (D)))
 #define G(B, C, D) (((B) & (D)) | ((C) & (~D)))
 #define H(B, C, D) ((B) ^ (C) ^ (D))
@@ -53,8 +52,8 @@ class MD5 {
     ofstream outFile;
     ifstream inFile;
     unsigned int CV[4];
-    unsigned int X[20];
-    char M[80];
+    unsigned int X[16];
+    char M[64];
     unsigned long long length;
 
   public:
@@ -71,32 +70,36 @@ class MD5 {
     }
 
     bool md5(const char *inFilename, const char *outFilename) {
-        memcpy(CV, IV, 4 * 4);
+        memcpy(CV, IV, MD5BYTES);
 
-        inFile.open(inFilename);
-        outFile.open(outFilename);
+        inFile.open(inFilename, ios::binary | ios::in);
+        outFile.open(outFilename, ios::binary | ios::out);
         while (inFile.peek() != EOF) {
             memset(M, 0, sizeof(M));
             inFile.read(M, BLOCKBYTES);
-            printf("%s\n", M);
             int size = inFile.gcount();
             if (size == BLOCKBYTES) {
                 process();
                 length += size * 8;
             } else {
-                for (int j = 0; j < 64; j++)
-                    printf("%x ", M[j]);
-                printf("\n");
                 length += size * 8;
                 finalProcess(size);
             }
         }
+
+        printf("MD5: ");
+        for (int j = 0; j < 16; j++)
+            printf("%02x ", ((unsigned char *)CV)[j]);
+        printf("\n");
         outFile.write((char *)CV, MD5BYTES);
         outFile.close();
         inFile.close();
     }
 
     void process() {
+        // for (int j = 0; j < 64; j++)
+        //     printf("%x ", (unsigned char)M[j]);
+        // printf("\n");
         memcpy(X, M, BLOCKBYTES);
 
         unsigned int temp[4];
@@ -120,7 +123,6 @@ class MD5 {
                 CYCLE(I, CV[(4 - i % 4) % 4], CV[(4 - (i + 3) % 4) % 4],
                       CV[(4 - (i + 2) % 4) % 4], CV[(4 - (i + 1) % 4) % 4],
                       X[K[i]], S[i], T[i]);
-                printf("%d ", i);
             }
         }
         for (int i = 0; i < 4; i++) {
@@ -152,10 +154,3 @@ class MD5 {
         }
     }
 };
-// printf("a:%x ", A);                                                    \
-//         printf("b:%x ", B);                                                    \
-//         printf("c:%x ", C);                                                    \
-//         printf("d:%x ", D);                                                    \
-//         printf("x:%x ", X);                                                    \
-//         printf("s:%x ", S);                                                    \
-//         printf("t:%x ", T);                                                    \
